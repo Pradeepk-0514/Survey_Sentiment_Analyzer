@@ -1,6 +1,6 @@
 #  Survey Sentiment Analyzer
 
-An AI-powered web application for analyzing survey feedback, identifying sentiment and key issues, assessing urgency and attrition risk, and generating actionable recommendations using Claude AI.
+An AI-powered web application for analyzing survey feedback, identifying sentiment and key issues, assessing urgency and attrition risk, and generating actionable recommendations.
 
 ##  Overview
 
