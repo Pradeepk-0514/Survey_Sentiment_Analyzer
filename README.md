@@ -111,9 +111,6 @@ survey-sentiment-analyzer/
 │
 ├── index.html
 ├── README.md
-├── LICENSE
-└── assets/
-    └── screenshots/
 ```
 
 > If your actual file has a different name, such as `survey.html`, rename `index.html` in this structure accordingly.
