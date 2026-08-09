@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survey Sentiment Analyzer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; min-height: 100vh; }
+  .topbar { background: #fff; border-bottom: 1px solid #e5e5e2; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { width: 28px; height: 28px; background: #1a1a1a; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .topbar-logo svg { width: 16px; height: 16px; fill: #fff; }
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .topbar-sub { font-size: 12px; color: #888; margin-left: 4px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+  .tabs { display: flex; gap: 2px; margin-bottom: 20px; background: #e5e5e2; border-radius: 10px; padding: 3px; width: fit-content; }
+  .tab { padding: 7px 18px; font-size: 13px; border: none; background: none; cursor: pointer; color: #666; border-radius: 8px; font-weight: 500; transition: all 0.15s; }
+  .tab.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media(max-width:700px){ .metrics { grid-template-columns: 1fr 1fr; } }
+  .metric { background: #fff; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e5e2; }
+  .metric-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 500; }
+  .metric-value { font-size: 26px; font-weight: 600; color: #1a1a1a; margin-top: 4px; }
+  .metric-sub { font-size: 11px; margin-top: 3px; font-weight: 500; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media(max-width:700px){ .grid2 { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid #e5e5e2; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 14px; }
+  .dept-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .dept-name { font-size: 12px; color: #555; width: 85px; flex-shrink: 0; }
+  .dept-bar-bg { flex: 1; height: 7px; background: #f0f0ee; border-radius: 4px; overflow: hidden; }
+  .dept-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .dept-score { font-size: 12px; font-weight: 600; color: #1a1a1a; width: 34px; text-align: right; }
+  .issue-item { display: flex; align-items: flex-start; gap: 8px; padding: 9px 0; border-bottom: 1px solid #f0f0ee; }
+  .issue-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .issue-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; margin-top: 2px; font-weight: 600; }
+  .badge-high { background: #fde8e8; color: #b91c1c; }
+  .badge-med { background: #fef3cd; color: #92400e; }
+  .badge-low { background: #dcfce7; color: #166534; }
+  .issue-text { font-size: 12px; color: #1a1a1a; line-height: 1.5; font-weight: 500; }
+  .issue-count { font-size: 11px; color: #888; margin-top: 1px; }
+  .analyze-label { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 9px; }
+  .analyze-meta { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  select, textarea, input[type=text] { font-size: 13px; padding: 8px 11px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #1a1a1a; font-family: inherit; outline: none; }
+  select:focus, textarea:focus { border-color: #1a1a1a; }
+  textarea { width: 100%; height: 95px; resize: vertical; }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .btn-primary { background: #1a1a1a; color: #fff; border: none; padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-secondary { background: #fff; border: 1px solid #ddd; padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; color: #1a1a1a; font-weight: 500; transition: background 0.15s; }
+  .btn-secondary:hover { background: #f5f5f3; }
+  .result-card { background: #fff; border: 1px solid #e5e5e2; border-radius: 12px; padding: 16px 18px; margin-top: 12px; }
+  .sentiment-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 13px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+  .pill-positive { background: #dcfce7; color: #166534; }
+  .pill-negative { background: #fde8e8; color: #b91c1c; }
+  .pill-neutral { background: #f0f0ee; color: #555; }
+  .pill-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot-positive { background: #16a34a; }
+  .dot-negative { background: #dc2626; }
+  .dot-neutral { background: #888; }
+  .result-section { margin-bottom: 12px; }
+  .result-section:last-child { margin-bottom: 0; }
+  .result-section-title { font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 5px; }
+  .result-section-body { font-size: 13px; color: #1a1a1a; line-height: 1.65; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag { font-size: 11px; padding: 3px 9px; background: #f0f0ee; border-radius: 20px; color: #555; font-weight: 500; }
+  .action-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f0f0ee; }
+  .action-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .action-icon { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .action-text { font-size: 12px; color: #1a1a1a; line-height: 1.55; font-weight: 500; }
+  .action-role { font-size: 11px; color: #888; margin-top: 2px; }
+  .icon-high { background: #fde8e8; color: #b91c1c; }
+  .icon-med { background: #fef3cd; color: #92400e; }
+  .icon-low { background: #dcfce7; color: #166534; }
+  .loader { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #888; padding: 14px 0; }
+  .spinner { width: 16px; height: 16px; border: 2px solid #e5e5e2; border-top-color: #555; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .batch-table { width: 100%; border-collapse: collapse; }
+  .batch-table th { font-size: 11px; color: #888; font-weight: 600; text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e5e2; text-transform: uppercase; letter-spacing: 0.5px; }
+  .batch-table td { font-size: 12px; padding: 9px 8px; border-bottom: 1px solid #f0f0ee; vertical-align: middle; }
+  .batch-table tr:last-child td { border-bottom: none; }
+  .sent-inline { display: flex; align-items: center; gap: 7px; }
+  .sent-bar { height: 5px; width: 45px; border-radius: 3px; }
+  .trend-up { color: #16a34a; font-weight: 600; }
+  .trend-dn { color: #dc2626; font-weight: 600; }
+  .trend-flat { color: #888; font-weight: 600; }
+  .section-header { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: #888; margin-bottom: 18px; }
+  .info-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .info-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg viewBox="0 0 24 24"><path d="M9 19l-7-7 1.41-1.41L9 16.17 20.59 4.58 22 6z"/></svg>
+  </div>
+  <span class="topbar-title">Survey Sentiment Analyzer</span>
+  <span class="topbar-sub">AI-powered feedback intelligence</span>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">Overview</button>
+    <button class="tab" onclick="switchTab('analyze')">Analyze response</button>
+    <button class="tab" onclick="switchTab('batch')">Batch insights</button>
+    <button class="tab" onclick="switchTab('actions')">Action nudges</button>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div id="tab-dashboard">
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Total responses</div>
+        <div class="metric-value">1,284</div>
+        <div class="metric-sub" style="color:#16a34a">+12% this month</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Avg sentiment</div>
+        <div class="metric-value">62%</div>
+        <div class="metric-sub" style="color:#dc2626">-4pts vs last quarter</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">High urgency</div>
+        <div class="metric-value" style="color:#dc2626">23</div>
+        <div class="metric-sub" style="color:#888">Needs attention now</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Actions pending</div>
+        <div class="metric-value" style="color:#d97706">47</div>
+        <div class="metric-sub" style="color:#888">Assigned to managers</div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Sentiment by department</div>
+        <div id="dept-bars"></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Top emerging issues</div>
+        <div id="issues-list"></div>
+      </div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="card">
+      <div class="card-title">Sentiment distribution — last 6 months</div>
+      <canvas id="trendChart" height="130"></canvas>
+    </div>
+  </div>
+
+  <!-- ANALYZE TAB -->
+  <div id="tab-analyze" style="display:none">
+    <div class="section-header">Analyze a survey response</div>
+    <div class="section-sub">Paste any open-ended response — Claude will classify sentiment, extract issues, and suggest actions.</div>
+    <div class="card">
+      <div class="analyze-label">Response details</div>
+      <div class="analyze-meta">
+        <select id="sel-dept"><option>Engineering</option><option>Sales</option><option>HR</option><option>Operations</option><option>Marketing</option></select>
+        <select id="sel-type"><option>Employee engagement</option><option>Exit interview</option><option>Pulse survey</option><option>360 feedback</option></select>
+        <select id="sel-role"><option>Individual contributor</option><option>Manager</option><option>Director</option></select>
+      </div>
+      <textarea id="survey-input" placeholder="Paste the open-ended survey response here..."></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" id="analyze-btn" onclick="analyzeResponse()">Analyze with Claude</button>
+        <button class="btn-secondary" onclick="loadSample()">Load sample response</button>
+      </div>
+    </div>
+    <div id="analysis-result"></div>
+  </div>
+
+  <!-- BATCH TAB -->
+  <div id="tab-batch" style="display:none">
+    <div class="section-header">Batch insights</div>
+    <div class="section-sub">Organization-level sentiment overview across all departments.</div>
+    <div class="card">
+      <div class="card-title">Department-level summary</div>
+      <table class="batch-table">
+        <thead><tr><th>Department</th><th>Responses</th><th>Sentiment</th><th>Top issue</th><th>Trend</th></tr></thead>
+        <tbody id="batch-rows"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Ask Claude about organizational trends</div>
+      <textarea id="batch-q" placeholder="e.g. Which department has the highest attrition risk? What are the common themes across Engineering and Sales?" style="height:75px"></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" id="batch-btn" onclick="batchQuery()">Ask Claude</button>
+      </div>
+      <div id="batch-result"></div>
+    </div>
+  </div>
+
+  <!-- ACTIONS TAB -->
+  <div id="tab-actions" style="display:none">
+    <div class="section-header">Action nudges</div>
+    <div class="section-sub">Role-specific interventions based on detected sentiment signals.</div>
+    <div class="card">
+      <div class="card-title">Pending action nudges</div>
+      <div id="actions-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Generate role-specific action plan</div>
+      <div class="analyze-meta">
+        <select id="act-dept"><option>Engineering</option><option>Sales</option><option>HR</option><option>Operations</option></select>
+        <select id="act-role"><option>Manager</option><option>HR Business Partner</option><option>Leadership / VP</option></select>
+        <select id="act-issue"><option>Burnout risk</option><option>Attrition risk</option><option>Compensation concerns</option><option>Career stagnation</option></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" id="action-btn" onclick="generateActions()">Generate action plan</button>
+      </div>
+      <div id="action-result"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEPTS = [
+  {name:'Engineering',score:58,color:'#3b82f6'},
+  {name:'Sales',score:71,color:'#22c55e'},
+  {name:'HR',score:83,color:'#10b981'},
+  {name:'Operations',score:44,color:'#ef4444'},
+  {name:'Marketing',score:67,color:'#f59e0b'},
+];
+const ISSUES = [
+  {text:'Workload & burnout concerns',urgency:'high',count:'38 responses'},
+  {text:'Lack of career growth visibility',urgency:'high',count:'31 responses'},
+  {text:'Manager communication gaps',urgency:'med',count:'24 responses'},
+  {text:'Compensation benchmarking',urgency:'med',count:'19 responses'},
+  {text:'Remote work policy clarity',urgency:'low',count:'12 responses'},
+];
+const BATCH_DATA = [
+  {dept:'Engineering',resp:312,sent:58,issue:'Burnout',trend:'dn'},
+  {dept:'Sales',resp:241,sent:71,issue:'Quota pressure',trend:'up'},
+  {dept:'HR',resp:98,sent:83,issue:'Understaffing',trend:'flat'},
+  {dept:'Operations',resp:287,sent:44,issue:'Process friction',trend:'dn'},
+  {dept:'Marketing',resp:174,sent:67,issue:'Leadership clarity',trend:'up'},
+  {dept:'Finance',resp:112,sent:75,issue:'Work-life balance',trend:'flat'},
+];
+const ACTIONS = [
+  {text:'Schedule 1-on-1 check-in with Priya M. — burnout signals in last 2 surveys',role:'Engineering Manager',urgency:'high'},
+  {text:'Compensation review for 4 flagged Sales ICs — below-market sentiment rising',role:'Sales Manager + HR BP',urgency:'high'},
+  {text:'Career pathing workshop needed for Operations team — 11 responses flagged stagnation',role:'Operations Director',urgency:'med'},
+  {text:'Clarify remote policy with Marketing team — recurring confusion in pulse surveys',role:'Marketing Manager',urgency:'med'},
+  {text:'Recognize high performers in HR team — strong positive signals, reinforce culture',role:'HR Leadership',urgency:'low'},
+];
+const SAMPLES = [
+  "Honestly, I've been feeling really overwhelmed lately. The workload has nearly doubled since Q3 and I haven't had a proper conversation with my manager about career development in over 6 months. I enjoy the work itself, but I'm starting to feel like my efforts go unrecognized. If things don't change soon, I might start looking elsewhere.",
+  "The company culture is great and my team is supportive. However, I wish the compensation was more competitive. I've seen job postings for similar roles that pay 20-30% more. It would help to understand the pay bands and how I can grow into the next level.",
+  "My manager is fantastic and the work is meaningful. I feel aligned with company goals. The only concern is meeting fatigue — we have too many status update meetings that could be emails. Overall I'm happy and plan to stay long-term.",
+];
+
+function initDeptBars() {
+  document.getElementById('dept-bars').innerHTML = DEPTS.map(d => `
+    <div class="dept-row">
+      <span class="dept-name">${d.name}</span>
+      <div class="dept-bar-bg"><div class="dept-bar" style="width:${d.score}%;background:${d.color}"></div></div>
+      <span class="dept-score">${d.score}%</span>
+    </div>`).join('');
+}
+function initIssues() {
+  document.getElementById('issues-list').innerHTML = ISSUES.map(i => `
+    <div class="issue-item">
+      <span class="issue-badge badge-${i.urgency==='high'?'high':i.urgency==='med'?'med':'low'}">${i.urgency}</span>
+      <div><div class="issue-text">${i.text}</div><div class="issue-count">${i.count}</div></div>
+    </div>`).join('');
+}
+function initBatch() {
+  document.getElementById('batch-rows').innerHTML = BATCH_DATA.map(r => {
+    const col = r.sent>=70?'#22c55e':r.sent>=55?'#f59e0b':'#ef4444';
+    const tw = r.trend==='up'?'trend-up':r.trend==='dn'?'trend-dn':'trend-flat';
+    const ts = r.trend==='up'?'↑':r.trend==='dn'?'↓':'→';
+    return `<tr>
+      <td style="font-weight:600">${r.dept}</td>
+      <td style="color:#888">${r.resp}</td>
+      <td><div class="sent-inline"><div class="sent-bar" style="background:${col}"></div><span style="color:${col};font-weight:600">${r.sent}%</span></div></td>
+      <td style="color:#555">${r.issue}</td>
+      <td class="${tw}">${ts}</td>
+    </tr>`;
+  }).join('');
+}
+function initActions() {
+  document.getElementById('actions-list').innerHTML = ACTIONS.map(a => `
+    <div class="action-item">
+      <div class="action-icon icon-${a.urgency==='high'?'high':a.urgency==='med'?'med':'low'}">${a.urgency==='high'?'!':a.urgency==='med'?'~':'i'}</div>
+      <div><div class="action-text">${a.text}</div><div class="action-role">${a.role}</div></div>
+    </div>`).join('');
+}
+function initChart() {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:['Oct','Nov','Dec','Jan','Feb','Mar'],
+      datasets:[
+        {label:'Positive',data:[42,45,40,38,41,44],backgroundColor:'#86efac',stack:'s'},
+        {label:'Neutral',data:[28,25,27,30,26,24],backgroundColor:'#d1d5db',stack:'s'},
+        {label:'Negative',data:[30,30,33,32,33,32],backgroundColor:'#fca5a5',stack:'s'},
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},boxWidth:12,padding:12}}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11}}},y:{stacked:true,max:100,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11},callback:v=>v+'%'}}}}
+  });
+}
+
+function switchTab(t) {
+  ['dashboard','analyze','batch','actions'].forEach((id,i) => {
+    document.getElementById('tab-'+id).style.display = id===t?'':'none';
+    document.querySelectorAll('.tab')[i].classList.toggle('active', id===t);
+  });
+}
+function loadSample() {
+  document.getElementById('survey-input').value = SAMPLES[Math.floor(Math.random()*SAMPLES.length)];
+}
+
+async function analyzeResponse() {
+  const text = document.getElementById('survey-input').value.trim();
+  if(!text){alert('Please enter a survey response.');return;}
+  const dept = document.getElementById('sel-dept').value;
+  const type = document.getElementById('sel-type').value;
+  const role = document.getElementById('sel-role').value;
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled=true; btn.textContent='Analyzing...';
+  const resultEl = document.getElementById('analysis-result');
+  resultEl.innerHTML = '<div class="loader"><div class="spinner"></div>Claude is analyzing the response...</div>';
+
+  const prompt = `You are an expert HR sentiment analysis system. Analyze the following survey response and return ONLY a JSON object (no markdown, no extra text) with these exact fields:
+{"sentiment":"positive"|"neutral"|"negative","confidence":0-100,"summary":"2-sentence summary","keyIssues":["issue1","issue2","issue3"],"urgency":"high"|"medium"|"low","urgencyReason":"one sentence","attritionRisk":"high"|"medium"|"low","dimensions":["dimension1","dimension2"],"actionNudges":[{"role":"Manager","action":"specific action"},{"role":"HR Business Partner","action":"specific action"},{"role":"Leadership","action":"specific action"}]}
+
+Department: ${dept}
+Survey type: ${type}
+Respondent role: ${role}
+Response: """${text}"""`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data = await res.json();
+    const raw = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const r = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    const pillClass = `pill-${r.sentiment}`;
+    const dotClass = `dot-${r.sentiment}`;
+    const sentLabel = r.sentiment.charAt(0).toUpperCase()+r.sentiment.slice(1);
+    const urg = (r.urgency||'medium').toLowerCase();
+    const urgBadge = urg==='high'?'badge-high':urg==='medium'?'badge-med':'badge-low';
+
+    resultEl.innerHTML = `<div class="result-card">
+      <div class="info-row">
+        <span class="sentiment-pill ${pillClass}"><span class="pill-dot ${dotClass}"></span>${sentLabel}</span>
+        <span class="info-badge issue-badge ${urgBadge}">Urgency: ${urg}</span>
+        <span class="info-badge issue-badge ${r.attritionRisk==='high'?'badge-high':r.attritionRisk==='medium'?'badge-med':'badge-low'}">Attrition: ${r.attritionRisk}</span>
+        <span style="font-size:11px;color:#888;margin-left:auto">Confidence: ${r.confidence}%</span>
+      </div>
+      <div class="result-section">
+        <div class="result-section-title">Summary</div>
+        <div class="result-section-body">${r.summary}</div>
+      </div>
+      <div class="result-section">
+        <div class="result-section-title">Key issues identified</div>
+        <div class="tag-list">${(r.keyIssues||[]).map(i=>`<span class="tag">${i}</span>`).join('')}</div>
+      </div>
+      <div class="result-section">
+        <div class="result-section-title">Dimensions flagged</div>
+        <div class="tag-list">${(r.dimensions||[]).map(d=>`<span class="tag">${d}</span>`).join('')}</div>
+      </div>
+      <div class="result-section">
+        <div class="result-section-title">Why urgent</div>
+        <div class="result-section-body" style="color:#555">${r.urgencyReason}</div>
+      </div>
+      <div class="result-section" style="margin-bottom:0">
+        <div class="result-section-title">Action nudges</div>
+        ${(r.actionNudges||[]).map((a,i)=>`
+          <div class="action-item">
+            <div class="action-icon icon-${i===0?'high':i===1?'med':'low'}">${i===0?'!':i===1?'~':'i'}</div>
+            <div><div class="action-text">${a.action}</div><div class="action-role">${a.role}</div></div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="result-card" style="color:#dc2626">Error: ${e.message}. Check your API key setup or network.</div>`;
+  }
+  btn.disabled=false; btn.textContent='Analyze with Claude';
+}
+
+async function batchQuery() {
+  const q = document.getElementById('batch-q').value.trim();
+  if(!q){alert('Enter a question.');return;}
+  const btn = document.getElementById('batch-btn');
+  btn.disabled=true; btn.textContent='Asking Claude...';
+  const resultEl = document.getElementById('batch-result');
+  resultEl.innerHTML = '<div class="loader"><div class="spinner"></div>Claude is analyzing org-level data...</div>';
+
+  const prompt = `You are an organizational HR analytics expert. Here is aggregated department-level survey sentiment data:\n${JSON.stringify(BATCH_DATA)}\n\nQuestion: ${q}\n\nProvide a concise, actionable answer in 3-5 sentences. Focus on specific departments, risks, and recommended next steps for leadership.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})
+    });
+    const data = await res.json();
+    const text = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    resultEl.innerHTML = `<div class="result-card" style="margin-top:12px"><div class="result-section-body">${text}</div></div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="result-card" style="color:#dc2626">${e.message}</div>`;
+  }
+  btn.disabled=false; btn.textContent='Ask Claude';
+}
+
+async function generateActions() {
+  const dept = document.getElementById('act-dept').value;
+  const role = document.getElementById('act-role').value;
+  const issue = document.getElementById('act-issue').value;
+  const btn = document.getElementById('action-btn');
+  btn.disabled=true; btn.textContent='Generating...';
+  const resultEl = document.getElementById('action-result');
+  resultEl.innerHTML = '<div class="loader"><div class="spinner"></div>Generating action plan...</div>';
+
+  const prompt = `You are an expert HR advisor. Generate a specific, role-appropriate action plan.
+
+Department: ${dept}
+Role of person taking action: ${role}
+Primary issue detected: ${issue}
+
+Return ONLY a JSON array of 4-5 action items, no markdown, no backticks:
+[{"priority":"high"|"medium"|"low","action":"specific action to take","timeline":"e.g. This week","expectedOutcome":"brief outcome"}]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompt}]})
+    });
+    const data = await res.json();
+    const raw = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const actions = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    resultEl.innerHTML = `<div class="result-card" style="margin-top:12px">
+      ${actions.map(a=>{
+        const urg = a.priority==='high'?'badge-high':a.priority==='medium'?'badge-med':'badge-low';
+        const ic = a.priority==='high'?'icon-high':a.priority==='medium'?'icon-med':'icon-low';
+        return `<div class="action-item">
+          <div class="action-icon ${ic}">${a.priority==='high'?'!':a.priority==='medium'?'~':'i'}</div>
+          <div style="flex:1">
+            <div class="action-text">${a.action}</div>
+            <div style="display:flex;gap:7px;margin-top:3px;align-items:center">
+              <span class="issue-badge ${urg}" style="font-size:10px">${a.priority}</span>
+              <span style="font-size:11px;color:#888">${a.timeline}</span>
+            </div>
+            <div style="font-size:11px;color:#888;margin-top:2px">${a.expectedOutcome}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="result-card" style="color:#dc2626">${e.message}</div>`;
+  }
+  btn.disabled=false; btn.textContent='Generate action plan';
+}
+
+initDeptBars(); initIssues(); initBatch(); initActions(); initChart();
+</script>
+</body>
+</html>
