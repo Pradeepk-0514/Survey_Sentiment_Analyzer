@@ -165,7 +165,7 @@ Claude is instructed to return structured information containing sentiment, conf
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/survey-sentiment-analyzer.git
+git clone https://github.com/Pradeepk-0514/survey-sentiment-analyzer.git
 ```
 
 ### 2. Open the project
